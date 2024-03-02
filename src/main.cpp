@@ -29,7 +29,7 @@
 #include <Wire.h>  
 #include "HT_SSD1306Wire.h"
 /********************************* lora  *********************************************/
-#define RF_FREQUENCY                                868000000 // Hz
+#define RF_FREQUENCY                                915000000 // Hz
 
 #define TX_OUTPUT_POWER                             10        // dBm
 
@@ -86,6 +86,7 @@ uint64_t chipid;
 int16_t RssiDetection = 0;
 
 
+//this puts the radio back into reciever mode after sending data
 void OnTxDone( void )
 {
 	Serial.print("TX done......");
@@ -100,6 +101,7 @@ void OnTxTimeout( void )
 	state=STATE_TX;
 }
 
+//print received data, and put radio back into send mode
 void OnRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr )
 {
 	rxNumber++;
@@ -118,6 +120,7 @@ void OnRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr )
 void lora_init(void)
 {
   Mcu.begin();
+  
   txNumber=0;
   Rssi=0;
   rxNumber = 0;
@@ -151,92 +154,6 @@ void logo(){
 	factory_display.display();
 }
 
-void WIFISetUp(void)
-{
-	// Set WiFi to station mode and disconnect from an AP if it was previously connected
-	WiFi.disconnect(true);
-	delay(100);
-	WiFi.mode(WIFI_STA);
-	WiFi.setAutoConnect(true);
-	WiFi.begin("Your WiFi SSID","Your Password");//fill in "Your WiFi SSID","Your Password"
-	delay(100);
-
-	byte count = 0;
-	while(WiFi.status() != WL_CONNECTED && count < 10)
-	{
-		count ++;
-		delay(500);
-		factory_display.drawString(0, 0, "Connecting...");
-		factory_display.display();
-	}
-
-	factory_display.clear();
-	if(WiFi.status() == WL_CONNECTED)
-	{
-		factory_display.drawString(0, 0, "Connecting...OK.");
-		factory_display.display();
-//		delay(500);
-	}
-	else
-	{
-		factory_display.clear();
-		factory_display.drawString(0, 0, "Connecting...Failed");
-		factory_display.display();
-		//while(1);
-	}
-	factory_display.drawString(0, 10, "WIFI Setup done");
-	factory_display.display();
-	delay(500);
-}
-
-void WIFIScan(unsigned int value)
-{
-	unsigned int i;
-    WiFi.mode(WIFI_STA);
-
-	for(i=0;i<value;i++)
-	{
-		factory_display.drawString(0, 20, "Scan start...");
-		factory_display.display();
-
-		int n = WiFi.scanNetworks();
-		factory_display.drawString(0, 30, "Scan done");
-		factory_display.display();
-		delay(500);
-		factory_display.clear();
-
-		if (n == 0)
-		{
-			factory_display.clear();
-			factory_display.drawString(0, 0, "no network found");
-			factory_display.display();
-			//while(1);
-		}
-		else
-		{
-			factory_display.drawString(0, 0, (String)n);
-			factory_display.drawString(14, 0, "networks found:");
-			factory_display.display();
-			delay(500);
-
-			for (int i = 0; i < n; ++i) {
-			// Print SSID and RSSI for each network found
-				factory_display.drawString(0, (i+1)*9,(String)(i + 1));
-				factory_display.drawString(6, (i+1)*9, ":");
-				factory_display.drawString(12,(i+1)*9, (String)(WiFi.SSID(i)));
-				factory_display.drawString(90,(i+1)*9, " (");
-				factory_display.drawString(98,(i+1)*9, (String)(WiFi.RSSI(i)));
-				factory_display.drawString(114,(i+1)*9, ")");
-				//factory_display.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-				delay(10);
-			}
-		}
-
-		factory_display.display();
-		delay(800);
-		factory_display.clear();
-	}
-}
 
 bool resendflag=false;
 bool deepsleepflag=false;
@@ -288,24 +205,13 @@ void setup()
 	delay(300);
 	factory_display.clear();
 
-	WIFISetUp();
-	WiFi.disconnect(); //
-	WiFi.mode(WIFI_STA);
-	delay(100);
-
-	WIFIScan(1);
-
-	chipid=ESP.getEfuseMac();//The chip ID is essentially its MAC address(length: 6 bytes).
-	Serial.printf("ESP32ChipID=%04X",(uint16_t)(chipid>>32));//print High 2 bytes
-	Serial.printf("%08X\n",(uint32_t)chipid);//print Low 4bytes.
-
 	attachInterrupt(0,interrupt_GPIO0,FALLING);
 	lora_init();
 	packet ="waiting lora data!";
-  factory_display.drawString(0, 10, packet);
-  factory_display.display();
-  delay(100);
-  factory_display.clear();
+  	factory_display.drawString(0, 10, packet);
+  	factory_display.display();
+  	delay(100);
+  	factory_display.clear();
 	pinMode(LED ,OUTPUT);
 	digitalWrite(LED, LOW);  
 }
@@ -346,31 +252,23 @@ if(receiveflag && (state==LOWPOWER) )
 		packet += rxpacket[i];
 		i++;
 	}
-	packSize = "R_Size: ";
-	packSize += String(rxSize,DEC);
-	packSize += " R_rssi: ";
-	packSize += String(Rssi,DEC);
-	send_num = "send num: ";
-	send_num += String(txNumber,DEC);
 	factory_display.drawString(0, 0, show_lora);
-  factory_display.drawString(0, 10, packet);
-  factory_display.drawString(0, 20, packSize);
-  factory_display.drawString(0, 50, send_num);
-  factory_display.display();
-  delay(10);
-  factory_display.clear();
+  	factory_display.drawString(0, 10, packet);
+  	factory_display.drawString(0, 20, packSize);
+  	factory_display.display();
+  	delay(10);
+  	factory_display.clear();
 
-  if((rxNumber%2)==0)
-  {
-   digitalWrite(LED, HIGH);  
-  }
+  	if((rxNumber%2)==0)
+  	{
+   	digitalWrite(LED, HIGH);  
+  	}
 }
 switch(state)
   {
     case STATE_TX:
       delay(1000);
-      txNumber++;
-      sprintf(txpacket,"hello %d,Rssi:%d",txNumber,Rssi);
+      sprintf(txpacket,"hello world");
       Serial.printf("\r\nsending packet \"%s\" , length %d\r\n",txpacket, strlen(txpacket));
       Radio.Send( (uint8_t *)txpacket, strlen(txpacket) );
       state=LOWPOWER;

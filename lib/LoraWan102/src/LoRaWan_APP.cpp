@@ -1,6 +1,5 @@
 #include <LoRaWan_APP.h>
 #include <Arduino.h>
-
 #if(LoraWan_RGB==1)
 #include "CubeCell_NeoPixel.h"
 CubeCell_NeoPixel pixels(1, RGB, NEO_GRB + NEO_KHZ800);
